@@ -38,7 +38,7 @@
 
 1. Клонировать репозиторий в директорию `htdocs` XAMPP:
 ```bash
-git clone https://github.com/your-username/ChatBot-RVK-belozerov.git
+git clone https://github.com/belozerovmi/ChatBot-RVK-belozerov.git
 cd ChatBot-RVK-belozerov
 ```
 
