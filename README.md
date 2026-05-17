@@ -111,7 +111,7 @@
 git clone https://github.com/belozerovmi/ChatBot-RVK-belozerov.git
 ```
 
-> **Важно:** Укажите ваше реальное имя пользователя GitHub вместо `ВАШ_USERNAME`.
+> **Важно:** Укажите ваше реальное имя пользователя GitHub.
 
 ### Шаг 2. Размещение в директории XAMPP
 
