@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Чат-бот РВК — Подбор персонала</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="chat-container" id="chatContainer">
+      <div class="chat-header" id="chatHeader">
+        <div class="chat-header-left">
+          <span class="unread-dot" id="unreadDot" style="display: none"></span>
+          <div class="logo">
+            <img src="RVK-logo.png" alt="РВК" />
+          </div>
+          <div>
+            <div>РВК-Воронеж</div>
+            <div>Подбор персонала</div>
+          </div>
+        </div>
+        <div class="chat-toggle">
+          <span class="chat-toggle-icon">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="icon icon-tabler icons-tabler-outline icon-tabler-chevron-up"
+            >
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M6 15l6 -6l6 6" />
+            </svg>
+          </span>
+        </div>
+      </div>
+      <div class="chat-body-wrapper">
+        <div class="chat-body">
+          <div class="messages" id="messages"></div>
+          <div class="input-area" id="inputArea"></div>
+        </div>
+      </div>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>
