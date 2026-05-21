@@ -781,20 +781,16 @@ function resetChat() {
   isChatFinished = false;
   waitingForVacancySelection = false;
   waitingForReturnResponse = false;
-
-  // Очищаем сообщения
+  
   messagesDiv.innerHTML = "";
-
-  // Очищаем область ввода
   inputArea.innerHTML = "";
   inputArea.className = "input-area";
 
-  // Загружаем вакансии заново
   isFirstOpen = true;
   loadVacancies();
 }
 
-// Аккордеон логика с остановкой всплытия
+// Аккордеон логика 
 const chatContainer = document.getElementById("chatContainer");
 const chatHeader = document.getElementById("chatHeader");
 let isExpanded = false;
@@ -846,10 +842,7 @@ function scrollToLastMessage() {
     // Получаем позицию последнего сообщения
     const messageTop = lastMessage.offsetTop;
     const messageHeight = lastMessage.offsetHeight;
-
-    // Прокручиваем так, чтобы сообщение было в верхней части (с отступом 20px)
     const targetScroll = messageTop - 80;
-
     messagesDiv.scrollTo({
       top: targetScroll,
       behavior: "smooth",
