@@ -35,6 +35,7 @@ function addBotMessage(text, isError = false) {
   wrapper.appendChild(timeSpan);
   messagesDiv.appendChild(wrapper);
   scrollToLastMessage();
+  setTimeout(addAntiSpamToAllButtons, 50);
 }
 
 function addUserMessage(text) {
@@ -73,25 +74,6 @@ function validateName(name) {
   const trimmed = name.trim();
   if (!trimmed) return { valid: false, message: "Введите имя" };
   if (trimmed.length < 2) return { valid: false, message: "Минимум 2 символа" };
-  if (!/^[а-яёА-ЯЁa-zA-Z\s\-]+$/.test(trimmed))
-    return { valid: false, message: "Только буквы" };
-  return { valid: true, value: trimmed };
-}
-
-function validateAge(age) {
-  const trimmed = age.trim();
-  if (!trimmed) return { valid: false, message: "Введите возраст" };
-  const ageNum = parseInt(trimmed, 10);
-  if (isNaN(ageNum)) return { valid: false, message: "Введите число" };
-  if (ageNum < 18)
-    return { valid: false, message: "Минимальный возраст 18 лет" };
-  if (ageNum > 100) return { valid: false, message: "Некорректный возраст" };
-  return { valid: true, value: ageNum };
-}
-
-function validateCitizenship(citizenship) {
-  const trimmed = citizenship.trim();
-  if (!trimmed) return { valid: false, message: "Введите гражданство" };
   if (!/^[а-яёА-ЯЁa-zA-Z\s\-]+$/.test(trimmed))
     return { valid: false, message: "Только буквы" };
   return { valid: true, value: trimmed };
@@ -176,6 +158,7 @@ function showVacancyButtons() {
     };
     inputArea.appendChild(btn);
   });
+  setTimeout(addAntiSpamToAllButtons, 50);
 }
 
 function selectVacancy(vacancy) {
@@ -190,33 +173,126 @@ function selectVacancy(vacancy) {
     `<strong>${vacancy.title}</strong>\n\n${vacancy.description}\n\nЗарплата: ${vacancy.salary_min || "не указана"} - ${vacancy.salary_max || "не указана"} руб. (до вычета НДФЛ)\nГрафик: ${vacancy.schedule || "не указан"}\n\nХотите откликнуться на вакансию?`,
   );
 
-  showResponseButtons();
+  showConsentButtons();
 }
 
-function showResponseButtons() {
+function showConsentButtons() {
   inputArea.innerHTML = "";
-  inputArea.className = "input-area buttons-container";
+  inputArea.className = "input-area";
 
-  const yesBtn = document.createElement("button");
-  yesBtn.className = "option-btn";
-  yesBtn.textContent = "Хочу откликнуться";
-  yesBtn.onclick = (e) => {
+  const consentText = document.createElement("div");
+  consentText.style.cssText =
+    "margin-bottom: 8px; font-size: 13px; color: #1485d1; display: flex; flex-direction: column; align-items: center;";
+  consentText.innerHTML = `
+        <p style = "text-align: center; font-weight: 600;">Для отклика на вакансию необходимо ваше согласие на обработку персональных данных</p>
+        <p class="consent_personal_data_checkbox" style="font-size: 12px; margin-top: 8px; text-align: center;">
+            Пожалуйста, ознакомьтесь с 
+            <a href="https://voronezh.rosvodokanal.ru/upload/voronezh/%D0%9F%D1%80%D0%B8%D0%BB%D0%BE%D0%B6%D0%B5%D0%BD%D0%B8%D0%B5%20%E2%84%961%20%D0%9F%D0%BE%D0%BB%D0%B8%D1%82%D0%B8%D0%BA%D0%B0%20%D0%9F%D0%B4%D0%9D%20%D0%A0%D0%92%D0%9A-%D0%92%D0%BE%D1%80%D0%BE%D0%BD%D0%B5%D0%B6%202023.DOCX" target="_blank" style="color: #1485d1; text-decoration: underline;">Политикой обработки персональных данных</a>.
+        </p>
+    `;
+  inputArea.appendChild(consentText);
+
+  const checkboxWrapper = document.createElement("div");
+  checkboxWrapper.className = "checkbox-wrapper-42";
+  checkboxWrapper.style.cssText =
+    "display: flex; align-items: center; margin-bottom: 16px;";
+
+  const checkboxInput = document.createElement("input");
+  checkboxInput.type = "checkbox";
+  checkboxInput.id = "user-consent";
+
+  const customCbx = document.createElement("label");
+  customCbx.className = "cbx";
+  customCbx.htmlFor = "user-consent";
+
+  const textLabel = document.createElement("label");
+  textLabel.className = "lbl";
+  textLabel.htmlFor = "user-consent";
+  textLabel.textContent =
+    "Я даю согласие на обработку моих персональных данных";
+
+  checkboxWrapper.appendChild(checkboxInput);
+  checkboxWrapper.appendChild(customCbx);
+  checkboxWrapper.appendChild(textLabel);
+  inputArea.appendChild(checkboxWrapper);
+
+  const buttonsWrapper = document.createElement("div");
+  buttonsWrapper.style.cssText =
+    "display: flex; gap: 10px; flex-direction: column; width: 100%;";
+
+  const agreeBtn = document.createElement("button");
+  agreeBtn.className = "option-btn";
+  agreeBtn.textContent = "Продолжить";
+  agreeBtn.onclick = (e) => {
     e.stopPropagation();
-    addUserMessage("Хочу откликнуться");
+
+    // Проверяем чекбокс
+    if (!checkboxInput.checked) {
+      const existingError = checkboxWrapper.querySelector(
+        ".input-error-message",
+      );
+      if (existingError) existingError.remove();
+
+      const errorDiv = document.createElement("div");
+      errorDiv.className = "input-error-message";
+      errorDiv.textContent =
+        "Пожалуйста, дайте согласие на обработку персональных данных";
+
+      checkboxInput.classList.add("input-error");
+      checkboxWrapper.style.position = "relative";
+      checkboxWrapper.insertBefore(errorDiv, checkboxWrapper.firstChild);
+      setTimeout(() => errorDiv.classList.add("show"), 10);
+      setTimeout(() => {
+        errorDiv.classList.remove("show");
+        checkboxInput.classList.remove("input-error");
+        setTimeout(() => errorDiv.remove(), 300);
+      }, 3000);
+      return;
+    }
+
+    addUserMessage("Даю согласие");
+    answers.consentGiven = true;
+    answers.consentTimestamp = new Date().toISOString();
     startApplicationFlow();
   };
 
-  const noBtn = document.createElement("button");
-  noBtn.className = "option-btn";
-  noBtn.textContent = "Нет, спасибо";
-  noBtn.onclick = (e) => {
+  const declineBtn = document.createElement("button");
+  declineBtn.className = "option-btn";
+  declineBtn.style.opacity = "0.5";
+  declineBtn.textContent = "Не даю согласие";
+  declineBtn.onclick = (e) => {
     e.stopPropagation();
-    addUserMessage("Нет, спасибо");
-    declineApplication();
+    addUserMessage("Не даю согласие");
+    answers.consentGiven = false;
+
+    inputArea.innerHTML = "";
+    inputArea.className = "input-area";
+
+    const messageDiv = document.createElement("div");
+    messageDiv.style.cssText =
+      "text-align: center; padding: 20px; background: #f5f5f5; border-radius: 10px; margin-bottom: 15px;";
+    messageDiv.innerHTML = `
+      <p style="margin-bottom: 10px;">Вы не дали согласие на обработку персональных данных.</p>
+      <p style="font-size: 12px; color: #666;">Мы не можем обработать ваш отклик без этого.</p>
+    `;
+    inputArea.appendChild(messageDiv);
+
+    const restartBtn = document.createElement("button");
+    restartBtn.className = "option-btn";
+    restartBtn.style.background = "#1485d1";
+    restartBtn.style.color = "white";
+    restartBtn.textContent = "Выбрать другую вакансию";
+    restartBtn.onclick = (e2) => {
+      e2.stopPropagation();
+      resetChat();
+    };
+    inputArea.appendChild(restartBtn);
   };
 
-  inputArea.appendChild(yesBtn);
-  inputArea.appendChild(noBtn);
+  buttonsWrapper.appendChild(agreeBtn);
+  buttonsWrapper.appendChild(declineBtn);
+  inputArea.appendChild(buttonsWrapper);
+  setTimeout(addAntiSpamToAllButtons, 50);
 }
 
 function declineApplication() {
@@ -237,7 +313,6 @@ function declineApplication() {
     startApplicationFlow();
   };
 
-  // Добавляем кнопку для выбора другой вакансии
   const otherVacancyBtn = document.createElement("button");
   otherVacancyBtn.className = "option-btn";
   otherVacancyBtn.textContent = "Выбрать другую вакансию";
@@ -250,6 +325,7 @@ function declineApplication() {
 
   inputArea.appendChild(returnBtn);
   inputArea.appendChild(otherVacancyBtn);
+  setTimeout(addAntiSpamToAllButtons, 50);
 }
 
 function showReturnButton() {
@@ -266,110 +342,103 @@ function showReturnButton() {
   };
 
   inputArea.appendChild(returnBtn);
+  setTimeout(addAntiSpamToAllButtons, 50);
 }
 
 function startApplicationFlow() {
   waitingForReturnResponse = false;
   isChatFinished = false;
+
+  // Сохраняем согласие, если оно было
+  const savedConsent = answers.consentGiven;
+  const savedConsentTimestamp = answers.consentTimestamp;
+
   answers = {};
   currentStep = 0;
+
+  // Восстанавливаем согласие
+  if (savedConsent) {
+    answers.consentGiven = savedConsent;
+    answers.consentTimestamp = savedConsentTimestamp;
+  }
+
   loadQuestionsForVacancy().then(() => {
     displayCurrentStep();
   });
 }
 
 async function loadQuestionsForVacancy() {
-  try {
-    const res = await fetch(
-      `api.php?action=getQuestions&vacancy_id=${currentVacancy.id}`,
-    );
-    const dbQuestions = await res.json();
-
-    if (dbQuestions.length) {
-      questions = dbQuestions;
-    } else {
-      questions = [
-        {
-          bot_message: "Укажите ваше имя",
-          type: "text",
-          field_name: "firstName",
-          validation: "name",
-          required: true,
-        },
-        {
-          bot_message: "Ваш номер телефона",
-          type: "text",
-          field_name: "phone",
-          validation: "phone",
-          required: true,
-        },
-        {
-          bot_message: "Хотите прикрепить резюме?",
-          type: "buttons",
-          options: ["Да, прикрепить", "Нет, продолжить"],
-          field_name: "hasResume",
-        },
-        {
-          bot_message: "Загрузите резюме (PDF, DOC, DOCX)",
-          type: "file",
-          field_name: "resumeFile",
-        },
-        {
-          bot_message: "Укажите ваш возраст (число)",
-          type: "text",
-          field_name: "age",
-          validation: "age",
-          required: true,
-        },
-        {
-          bot_message: "Ваше гражданство",
-          type: "text",
-          field_name: "citizenship",
-          validation: "citizenship",
-          required: true,
-        },
-        {
-          bot_message: "Опыт работы (лет)",
-          type: "text",
-          field_name: "experience",
-          validation: "experience",
-          required: true,
-        },
-        {
-          bot_message: "Предпочтительное расположение?",
-          type: "choice",
-          options: ["Правый берег", "Левый берег", "Не имеет значения"],
-          field_name: "location",
-        },
-        {
-          bot_message: "Желаемый график?",
-          type: "choice",
-          options: ["5/2 полный день", "Сменный", "Гибкий", "Удалённый"],
-          field_name: "schedule",
-        },
-        {
-          bot_message: "Образование",
-          type: "choice",
-          options: [
-            "Среднее специальное",
-            "Высшее (бакалавр)",
-            "Высшее (магистр)",
-            "Неоконченное высшее",
-          ],
-          field_name: "education",
-        },
-        {
-          bot_message: "Ожидаемая зарплата (руб.)",
-          type: "text",
-          field_name: "expectedSalary",
-          validation: "salary",
-          required: true,
-        },
-      ];
-    }
-  } catch (err) {
-    addBotMessage("Ошибка загрузки вопросов.", true);
-  }
+  questions = [
+    {
+      bot_message: "Как вас зовут?",
+      type: "text",
+      field_name: "firstName",
+      validation: "name",
+      required: true,
+    },
+    {
+      bot_message: "Ваш номер телефона",
+      type: "text",
+      field_name: "phone",
+      validation: "phone",
+      required: true,
+    },
+    {
+      bot_message: "Хотите прикрепить резюме?",
+      type: "buttons",
+      options: ["Да, прикрепить", "Нет, продолжить"],
+      field_name: "hasResume",
+    },
+    {
+      bot_message: "Прикрепите резюме (PDF, DOC, DOCX)",
+      type: "file",
+      field_name: "resumeFile",
+    },
+    {
+      bot_message: "Ваш опыт работы (в годах)",
+      type: "text",
+      field_name: "experience",
+      validation: "experience",
+      required: true,
+    },
+    {
+      bot_message: "В каком районе проживаете?",
+      type: "choice",
+      options: ["Левый берег", "Правый берег", "Не имеет значения"],
+      field_name: "location",
+    },
+    {
+      bot_message: "Какой график работы предпочтителен?",
+      type: "choice",
+      options: [
+        "5/2 полный день",
+        "Сменный график",
+        "Гибкий график",
+        "Удаленный",
+      ],
+      field_name: "schedule",
+    },
+    {
+      bot_message: "Ваше образование",
+      type: "choice",
+      options: [
+        "Среднее общее",
+        "Среднее специальное",
+        "Среднее профессиональное",
+        "Высшее (бакалавр)",
+        "Высшее (магистр)",
+        "Ученая степень",
+      ],
+      field_name: "education",
+    },
+    {
+      bot_message: "Ожидаемая зарплата (в рублях)",
+      type: "text",
+      field_name: "expectedSalary",
+      validation: "salary",
+      required: true,
+    },
+  ];
 }
 
 function displayCurrentStep() {
@@ -414,6 +483,7 @@ function buildInputArea(step) {
       };
       inputArea.appendChild(btn);
     });
+    setTimeout(addAntiSpamToAllButtons, 50);
   } else if (step.type === "text") {
     inputArea.classList.add("text-container");
     const wrapper = document.createElement("div");
@@ -425,27 +495,11 @@ function buildInputArea(step) {
     const input = document.createElement("input");
     input.type = "text";
 
-    // Настройка в зависимости от поля
     if (step.field_name === "phone") {
       input.placeholder = "+7 (___) ___-__-__";
       input.addEventListener("input", (e) => applyPhoneMask(e.target));
     } else if (step.field_name === "firstName") {
       input.placeholder = "Например: Иван";
-      input.addEventListener("input", (e) => {
-        let value = e.target.value;
-        let cleaned = value.replace(/[^a-zA-Zа-яёА-ЯЁ\s\-]/g, "");
-        let words = cleaned.split(/(\s+|-)/);
-        let formatted = words
-          .map((word) => {
-            if (word.match(/^[\s-]+$/)) return word;
-            if (word.length === 0) return word;
-            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-          })
-          .join("");
-        e.target.value = formatted;
-      });
-    } else if (step.field_name === "citizenship") {
-      input.placeholder = "Например: Россия";
       input.addEventListener("input", (e) => {
         let value = e.target.value;
         let cleaned = value.replace(/[^a-zA-Zа-яёА-ЯЁ\s\-]/g, "");
@@ -468,13 +522,6 @@ function buildInputArea(step) {
         if (parts.length > 2) {
           value = parts[0] + "." + parts.slice(1).join("");
         }
-        e.target.value = value;
-      });
-    } else if (step.field_name === "age") {
-      input.placeholder = "Например: 25";
-      input.addEventListener("input", (e) => {
-        let value = e.target.value;
-        value = value.replace(/[^0-9]/g, "");
         e.target.value = value;
       });
     } else if (step.field_name === "expectedSalary") {
@@ -513,6 +560,7 @@ function buildInputArea(step) {
     wrapper.appendChild(inputRow);
     inputArea.appendChild(wrapper);
     setTimeout(() => input.focus(), 100);
+    setTimeout(addAntiSpamToAllButtons, 50);
   } else if (step.type === "file") {
     inputArea.classList.add("file-container");
     const label = document.createElement("label");
@@ -531,6 +579,7 @@ function buildInputArea(step) {
     };
     label.appendChild(fileInput);
     inputArea.appendChild(label);
+    setTimeout(addAntiSpamToAllButtons, 50);
   }
 }
 
@@ -582,42 +631,13 @@ function processTextInput(value, step, inputElement) {
     value = v.formatted;
   }
 
-  if (step.validation === "age") {
-    const v = validateAge(value);
-    if (!v.valid) {
-      showInputError(inputElement, v.message);
-      return;
-    }
-    value = v.value;
-  }
-
-  if (step.validation === "citizenship") {
-    const v = validateCitizenship(value);
-    if (!v.valid) {
-      showInputError(inputElement, v.message);
-      return;
-    }
-    value = v.value;
-  }
-
   if (step.validation === "experience") {
-    // Проверяем, есть ли уже сохранённый возраст
-    if (answers.age) {
-      const v = validateExperienceWithAge(value, answers.age);
-      if (!v.valid) {
-        showInputError(inputElement, v.message);
-        return;
-      }
-      value = v.value;
-    } else {
-      // Если возраст ещё не введён (ошибка порядка вопросов)
-      const v = validateExperience(value);
-      if (!v.valid) {
-        showInputError(inputElement, v.message);
-        return;
-      }
-      value = v.value;
+    const v = validateExperience(value);
+    if (!v.valid) {
+      showInputError(inputElement, v.message);
+      return;
     }
+    value = v.value;
   }
 
   if (step.validation === "salary") {
@@ -640,15 +660,12 @@ let errorTimeout = null;
 let isErrorShowing = false;
 
 function showInputError(input, message) {
-  // Предотвращаем спам - если ошибка уже показывается, не создаём новую
   if (isErrorShowing) return;
 
-  // Удаляем старую ошибку если есть
   const existingError = input
     .closest(".input-wrapper")
     ?.querySelector(".input-error-message");
   if (existingError) {
-    // Если ошибка уже есть, просто обновляем сообщение
     existingError.textContent = message;
     existingError.classList.remove("show");
     setTimeout(() => {
@@ -664,7 +681,6 @@ function showInputError(input, message) {
   errorDiv.className = "input-error-message";
   errorDiv.textContent = message;
 
-  // Вставляем ошибку в .input-wrapper (контейнер)
   const wrapper = input.closest(".input-wrapper");
   if (wrapper) {
     wrapper.style.position = "relative";
@@ -673,14 +689,11 @@ function showInputError(input, message) {
     input.parentElement.insertBefore(errorDiv, input);
   }
 
-  // Принудительное обновление layout перед добавлением класса
   errorDiv.offsetHeight;
   errorDiv.classList.add("show");
 
-  // Очищаем предыдущий таймаут если есть
   if (errorTimeout) clearTimeout(errorTimeout);
 
-  // Устанавливаем таймаут на скрытие ошибки
   errorTimeout = setTimeout(() => {
     if (input) input.classList.remove("input-error");
     if (errorDiv) {
@@ -732,10 +745,19 @@ async function finishChat() {
   if (isChatFinished) return;
   isChatFinished = true;
 
-  // Отправляем заявку, если есть ответы
+  // Проверяем согласие перед отправкой
+  if (!answers.consentGiven) {
+    addBotMessage(
+      "Без согласия на обработку данных мы не можем принять вашу заявку.",
+      true,
+    );
+    isChatFinished = false;
+    return;
+  }
+
   if (currentVacancy && Object.keys(answers).length) {
     try {
-      await fetch("api.php?action=submitApplication", {
+      const response = await fetch("api.php?action=submitApplication", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -743,12 +765,26 @@ async function finishChat() {
           answers: answers,
         }),
       });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        addBotMessage(
+          "Произошла ошибка при отправке: " +
+            (result.error || "Неизвестная ошибка"),
+          true,
+        );
+        isChatFinished = false;
+        return;
+      }
     } catch (err) {
       console.error(err);
+      addBotMessage("Ошибка соединения. Попробуйте позже.", true);
+      isChatFinished = false;
+      return;
     }
   }
 
-  // Очищаем область ввода и показываем кнопку для нового диалога
   inputArea.innerHTML = "";
   inputArea.className = "input-area finished";
 
@@ -757,7 +793,6 @@ async function finishChat() {
   finishDiv.innerHTML = "Отклик отправлен!";
   inputArea.appendChild(finishDiv);
 
-  // Добавляем кнопку для нового диалога
   const newChatBtn = document.createElement("button");
   newChatBtn.className = "option-btn";
   newChatBtn.textContent = "Выбрать другую вакансию";
@@ -768,11 +803,10 @@ async function finishChat() {
     resetChat();
   };
   inputArea.appendChild(newChatBtn);
+  setTimeout(addAntiSpamToAllButtons, 50);
 }
 
-// Функция сброса чата для нового диалога
 function resetChat() {
-  // Очищаем все переменные
   currentVacancy = null;
   vacanciesList = [];
   questions = [];
@@ -781,8 +815,9 @@ function resetChat() {
   isChatFinished = false;
   waitingForVacancySelection = false;
   waitingForReturnResponse = false;
-  
+
   messagesDiv.innerHTML = "";
+
   inputArea.innerHTML = "";
   inputArea.className = "input-area";
 
@@ -790,7 +825,6 @@ function resetChat() {
   loadVacancies();
 }
 
-// Аккордеон логика 
 const chatContainer = document.getElementById("chatContainer");
 const chatHeader = document.getElementById("chatHeader");
 let isExpanded = false;
@@ -823,7 +857,6 @@ document.addEventListener("click", (e) => {
   if (isExpanded && !chatContainer.contains(e.target)) collapseChat();
 });
 
-// Остановка всплытия для всех кнопок внутри чата
 document
   .querySelectorAll(".option-btn, .send-btn, .file-label")
   .forEach((el) => {
@@ -835,14 +868,12 @@ function scrollToLastMessage() {
     const messagesDiv = document.getElementById("messages");
     if (!messagesDiv) return;
 
-    // Находим последнее сообщение
     const lastMessage = messagesDiv.lastElementChild;
     if (!lastMessage) return;
 
-    // Получаем позицию последнего сообщения
     const messageTop = lastMessage.offsetTop;
-    const messageHeight = lastMessage.offsetHeight;
     const targetScroll = messageTop - 80;
+
     messagesDiv.scrollTo({
       top: targetScroll,
       behavior: "smooth",
@@ -850,23 +881,25 @@ function scrollToLastMessage() {
   }, 100);
 }
 
-function validateExperienceWithAge(experience, age) {
-  const trimmedExp = experience.trim();
-  if (!trimmedExp) return { valid: false, message: "Введите опыт работы" };
+function addAntiSpamToAllButtons() {
+  document.querySelectorAll("button").forEach((btn) => {
+    if (btn.hasAttribute("data-anti-spam")) return;
+    btn.setAttribute("data-anti-spam", "true");
 
-  const expNum = parseFloat(trimmedExp);
-  if (isNaN(expNum)) return { valid: false, message: "Введите число (лет)" };
-  if (expNum < 0)
-    return { valid: false, message: "Опыт не может быть отрицательным" };
+    const originalClick = btn.onclick;
+    btn.onclick = (e) => {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.style.opacity = "0.5";
 
-  // Проверка, что опыт не больше возраста минус 14 (минимальный возраст начала работы)
-  const maxPossibleExp = age - 14;
-  if (expNum > maxPossibleExp) {
-    return {
-      valid: false,
-      message: `Опыт не может превышать ${maxPossibleExp} лет (ваш возраст ${age} лет)`,
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.style.opacity = "";
+      }, 1000);
+
+      if (originalClick) originalClick.call(btn, e);
     };
-  }
-
-  return { valid: true, value: expNum };
+  });
 }
+
+setTimeout(addAntiSpamToAllButtons, 100);

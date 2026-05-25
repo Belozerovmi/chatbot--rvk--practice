@@ -48,6 +48,16 @@ try {
         $answers = $data['answers'];
         $resume_path = $answers['resumeFile'] ?? null;
         
+        // ========== ПРОВЕРКА СОГЛАСИЯ ==========
+        // Проверка согласия - обязательно
+        $consent = isset($answers['consentGiven']) && $answers['consentGiven'] === true;
+        if (!$consent) {
+            echo json_encode(['error' => 'Требуется согласие на обработку персональных данных']);
+            exit;
+        }
+        // ======================================
+        
+        // Валидация телефона
         if (isset($answers['phone'])) {
             $phone = preg_replace('/[^0-9]/', '', $answers['phone']);
             if (!preg_match('/^7\d{10}$/', $phone)) {
@@ -56,16 +66,30 @@ try {
             }
         }
         
+        // Валидация имени
         if (isset($answers['firstName'])) {
             $answers['firstName'] = preg_replace('/[^а-яёА-ЯЁa-zA-Z\s\-]/u', '', $answers['firstName']);
         }
         
-        $stmt = $pdo->prepare("INSERT INTO applications (vacancy_id, answers_json, resume_path) VALUES (?, ?, ?)");
-        $stmt->execute([$vacancy_id, json_encode($answers, JSON_UNESCAPED_UNICODE), $resume_path]);
+        // IP и User-Agent для доказательства согласия
+        $consent_ip = $_SERVER['REMOTE_ADDR'] ?? null;
+        $consent_user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+        
+        // Сохраняем согласие в БД как 1 (true)
+        $stmt = $pdo->prepare("INSERT INTO applications (vacancy_id, answers_json, resume_path, consent_granted, consent_ip, consent_user_agent, consent_created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->execute([
+            $vacancy_id, 
+            json_encode($answers, JSON_UNESCAPED_UNICODE), 
+            $resume_path,
+            1, // consent_granted = 1 (ДА)
+            $consent_ip,
+            $consent_user_agent
+        ]);
+        
         echo json_encode(['success' => true, 'id' => $pdo->lastInsertId()]);
         exit;
     }
-
+    
     // ========== АДМИНКА ==========
     
     // Админка: все вакансии

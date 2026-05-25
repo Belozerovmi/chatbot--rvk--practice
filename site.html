@@ -3896,8 +3896,6 @@
     />
 
     <style>
-      /* Стили для позиционирования - переопределяем body из style.css бота */
-      /* Стили для позиционирования - переопределяем body из style.css бота */
       body {
         background: none !important;
         display: block !important;
@@ -3909,7 +3907,7 @@
         position: fixed !important;
         bottom: 0px !important;
         right: 20px !important;
-        width: 380px !important;
+        /* width: 520px !important; */
         max-width: calc(100vw - 40px) !important;
         z-index: 9999 !important;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
@@ -3927,16 +3925,16 @@
         max-height: 0 !important;
       }
 
-      /* Мобильные устройства - на всю ширину */
+      /* Мобильные устройства - на всю ширину
       @media (max-width: 768px) {
         .chat-container {
-          width: 100% !important;
+          width: 200px !important;
           max-width: 100% !important;
           right: 0 !important;
           bottom: 0 !important;
           border-radius: 16px 16px 0px 0px !important;
         }
-      }
+      } */
 
       /* Для очень маленьких экранов */
       @media (max-width: 480px) {

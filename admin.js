@@ -12,16 +12,21 @@ function showNotification(message, type = "success") {
 
 // Функция переключения вкладки
 function switchToTab(tab) {
+  // Обновляем активную кнопку в sidebar
   document
     .querySelectorAll(".nav-item")
     .forEach((b) => b.classList.remove("active"));
   document
     .querySelector(`.nav-item[data-tab="${tab}"]`)
     .classList.add("active");
+
+  // Обновляем видимость контента
   document
     .querySelectorAll(".tab-content")
     .forEach((t) => t.classList.remove("active"));
   document.getElementById(`${tab}-tab`).classList.add("active");
+
+  // Обновляем заголовок
   const titles = {
     vacancies: "Управление вакансиями",
     applications: "Заявки кандидатов",
@@ -40,7 +45,7 @@ function switchToTab(tab) {
     if (addBtn) addBtn.style.display = "none";
   }
 
-
+  // Сохраняем активную вкладку в localStorage
   localStorage.setItem("activeTab", tab);
 }
 
@@ -54,7 +59,7 @@ function loadSavedTab() {
   }
 }
 
-// обработчики кликов
+// Tab switching - обработчики кликов
 document.querySelectorAll(".nav-item").forEach((btn) => {
   btn.addEventListener("click", (e) => {
     e.preventDefault();
@@ -65,9 +70,10 @@ document.querySelectorAll(".nav-item").forEach((btn) => {
   });
 });
 
+// Загружаем сохранённую вкладку при загрузке страницы
 loadSavedTab();
 
-
+// Load vacancy filter dropdown
 async function loadVacancyFilter() {
   try {
     const res = await fetch("api.php?action=adminGetVacancies");
@@ -83,6 +89,8 @@ async function loadVacancyFilter() {
   }
 }
 
+// Filter applications by selected vacancy
+// Filter applications by selected vacancy
 function filterApplications() {
   const vacancyId = document.getElementById("vacancy-filter").value;
   const container = document.getElementById("applications-list");
@@ -135,6 +143,7 @@ function filterApplications() {
   container.innerHTML = renderApplications(filteredApps);
 }
 
+// Load all applications
 async function loadAllApplications() {
   try {
     const res = await fetch("api.php?action=getApplications");
@@ -151,13 +160,14 @@ async function loadAllApplications() {
     }
 
     allApplications = apps;
-    filterApplications();
+    filterApplications(); // Отображаем с текущим фильтром
   } catch (err) {
     console.error("loadAllApplications error:", err);
     showNotification("Ошибка загрузки: " + err.message, "error");
   }
 }
 
+// Render applications function
 function renderApplications(apps) {
   if (!apps || !apps.length)
     return '<div style="text-align:center;padding:60px;color:#94a3b8;"></div>';
@@ -184,8 +194,6 @@ function renderApplications(apps) {
             <div class="application-fields">
                 <div class="application-field"><strong>Имя:</strong> <span>${escapeHtml(answers.firstName) || "—"}</span></div>
                 <div class="application-field"><strong>Телефон:</strong> <span>${escapeHtml(answers.phone) || "—"}</span></div>
-                <div class="application-field"><strong>Возраст:</strong> <span>${escapeHtml(answers.age) || "—"}</span></div>
-                <div class="application-field"><strong>Гражданство:</strong> <span>${escapeHtml(answers.citizenship) || "—"}</span></div>
                 <div class="application-field"><strong>Опыт:</strong> <span>${escapeHtml(answers.experience) || "—"} лет</span></div>
                 <div class="application-field"><strong>Расположение:</strong> <span>${escapeHtml(answers.location) || "—"}</span></div>
                 <div class="application-field"><strong>График:</strong> <span>${escapeHtml(answers.schedule) || "—"}</span></div>
@@ -206,7 +214,7 @@ function renderApplications(apps) {
     .join("");
 }
 
-// Vacancy модалка
+// Vacancy Modal
 function showVacancyModal(vacancy = null) {
   const modal = document.getElementById("vacancyModal");
   if (vacancy) {
@@ -244,7 +252,7 @@ function showVacancyModal(vacancy = null) {
   modal.style.display = "flex";
 }
 
-// кнопки графика
+// Schedule buttons handler
 document.querySelectorAll(".schedule-option").forEach((btn) => {
   btn.addEventListener("click", () => {
     document
@@ -328,7 +336,7 @@ async function executeDelete() {
         loadVacancies();
         loadVacancyFilter();
       } else {
-        loadAllApplications(); 
+        loadAllApplications(); // Перезагружаем заявки
       }
     } else {
       showNotification("Ошибка удаления", "error");
@@ -417,9 +425,10 @@ function escapeHtml(str) {
   });
 }
 
-// подтверждение удаления
+// Confirm delete button handler
 document
   .getElementById("confirm-delete-btn")
   ?.addEventListener("click", executeDelete);
 
+// Load initial data
 loadVacancies();
