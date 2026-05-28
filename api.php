@@ -282,4 +282,16 @@ try {
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);
 }
+
+// Админка: получить активные заявки (согласие не отозвано)
+if ($action === 'getActiveApplications') {
+    $stmt = $pdo->query("SELECT a.*, v.title AS vacancy_title FROM applications a LEFT JOIN vacancies v ON a.vacancy_id = v.id WHERE a.consent_granted = 1 ORDER BY a.created_at DESC");
+    $apps = $stmt->fetchAll();
+    foreach ($apps as &$app) {
+        $app['answers'] = json_decode($app['answers_json'], true);
+        unset($app['answers_json']);
+    }
+    echo json_encode($apps);
+    exit;
+}
 ?>

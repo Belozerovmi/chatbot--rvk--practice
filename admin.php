@@ -174,7 +174,7 @@ if (!isset($_SESSION['admin_logged'])) {
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Админ-панель | РВК-Воронеж</title>
     <link rel="stylesheet" href="AdminStyle.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -240,17 +240,28 @@ if (!isset($_SESSION['admin_logged'])) {
                 <div id="vacancies-list" class="cards-grid"></div>
             </div>
 
-            <!-- Applications Tab (с фильтром) -->
-            <div id="applications-tab" class="tab-content">
-                <div class="filter-section">
-                    <label>Фильтр по вакансии:</label>
-                    <select id="vacancy-filter" class="vacancy-filter" onchange="filterApplications()">
-                        <option value="all">-- Все вакансии --</option>
-                    </select>
-                </div>
-                <div class="stats-bar" id="stats-bar"></div>
-                <div id="applications-list" class="applications-list"></div>
-            </div>
+ <!-- Applications Tab (с фильтрами) -->
+<div id="applications-tab" class="tab-content">
+    <div class="filter-section">
+        <div class="select-wrapper">
+            <label>Фильтр по вакансии:</label>
+            <select id="vacancy-filter" class="vacancy-filter" onchange="filterApplications()">
+                <option value="all"> Все вакансии </option>
+            </select>
+        </div>
+        <div class="select-wrapper">
+            <label>Фильтр по согласию:</label>
+            <select id="consent-filter" class="vacancy-filter" onchange="filterApplications()">
+                <option value="all"> Все заявки </option>
+                <option value="active">Согласие активно</option>
+                <option value="revoked">Согласие отозвано</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="stats-bar" id="stats-bar"></div>
+    <div id="applications-list" class="applications-list"></div>
+</div>
         </main>
     </div>
 
@@ -325,5 +336,77 @@ if (!isset($_SESSION['admin_logged'])) {
     <div id="notification" class="notification"></div>
 
     <script src="admin.js"></script>
+
+
+    <script>
+// Функция для определения высоты навигационной панели на мобильных устройствах
+function adjustForMobileNavigation() {
+    // Проверяем, мобильное ли устройство
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (!isMobile) return;
+    
+    // Получаем высоту видимой области
+    const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    const windowHeight = window.innerHeight;
+    
+    // Разница - это высота навигационной панели браузера/телефона
+    const navigationHeight = windowHeight - viewportHeight;
+    
+    console.log('Высота навигации:', navigationHeight);
+    
+    if (navigationHeight > 0) {
+        // Добавляем отступы к футеру сайдбара
+        const sidebarFooter = document.querySelector('.sidebar-footer');
+        const mainContent = document.querySelector('.main-content');
+        
+        if (sidebarFooter) {
+            sidebarFooter.style.paddingBottom = (navigationHeight + 20) + 'px';
+        }
+        
+        if (mainContent) {
+            mainContent.style.paddingBottom = (navigationHeight + 30) + 'px';
+        }
+    } else {
+        // Fallback для устройств, где visualViewport не работает
+        // Просто добавим стандартный большой отступ
+        const sidebarFooter = document.querySelector('.sidebar-footer');
+        const mainContent = document.querySelector('.main-content');
+        
+        if (sidebarFooter) {
+            sidebarFooter.style.paddingBottom = '80px';
+        }
+        
+        if (mainContent) {
+            mainContent.style.paddingBottom = '80px';
+        }
+    }
+}
+
+// Запускаем при загрузке
+window.addEventListener('load', adjustForMobileNavigation);
+
+// Запускаем при изменении ориентации или появлении/скрытии клавиатуры
+window.visualViewport?.addEventListener('resize', () => {
+    setTimeout(adjustForMobileNavigation, 100);
+});
+
+// Также при изменении размера окна
+window.addEventListener('resize', () => {
+    setTimeout(adjustForMobileNavigation, 100);
+});
+
+// Дополнительная страховка для Android с кнопками навигации
+if (/Android/i.test(navigator.userAgent)) {
+    let lastHeight = window.innerHeight;
+    window.addEventListener('resize', () => {
+        const newHeight = window.innerHeight;
+        if (Math.abs(newHeight - lastHeight) > 100) {
+            setTimeout(adjustForMobileNavigation, 200);
+        }
+        lastHeight = newHeight;
+    });
+}
+</script>
 </body>
 </html>

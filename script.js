@@ -7,6 +7,8 @@ let isFirstOpen = true;
 let isChatFinished = false;
 let waitingForVacancySelection = false;
 let waitingForReturnResponse = false;
+let isFileUploadStep = false;
+let previousAnswers = {};
 
 const messagesDiv = document.getElementById("messages");
 const inputArea = document.getElementById("inputArea");
@@ -86,6 +88,8 @@ function validateExperience(experience) {
   if (isNaN(expNum)) return { valid: false, message: "Введите число (лет)" };
   if (expNum < 0)
     return { valid: false, message: "Опыт не может быть отрицательным" };
+  if (expNum > 100)
+    return { valid: false, message: "Пожалуйста, введите корректное значение" };
   return { valid: true, value: expNum };
 }
 
@@ -122,20 +126,16 @@ async function loadVacancies() {
   try {
     const res = await fetch("api.php?action=getVacancies");
     vacanciesList = await res.json();
-
     if (!vacanciesList.length) {
       addBotMessage("На данный момент нет активных вакансий. Загляните позже!");
       return false;
     }
-
     addBotMessage(
       "Здравствуйте! Я представляю ООО «РВК - Воронеж» — одно из крупнейших коммунальных предприятий города.\n\nВыберите, пожалуйста, вакансию, которая вас интересует:",
     );
-
     setTimeout(() => {
       showVacancyButtons();
     }, 0);
-
     waitingForVacancySelection = true;
     return true;
   } catch (err) {
@@ -147,7 +147,6 @@ async function loadVacancies() {
 function showVacancyButtons() {
   inputArea.innerHTML = "";
   inputArea.className = "input-area buttons-container";
-
   vacanciesList.forEach((vacancy) => {
     const btn = document.createElement("button");
     btn.className = "option-btn";
@@ -163,81 +162,66 @@ function showVacancyButtons() {
 
 function selectVacancy(vacancy) {
   if (!waitingForVacancySelection) return;
-
   waitingForVacancySelection = false;
   waitingForReturnResponse = false;
   currentVacancy = vacancy;
   addUserMessage(vacancy.title);
-
   addBotMessage(
     `<strong>${vacancy.title}</strong>\n\n${vacancy.description}\n\nЗарплата: ${vacancy.salary_min || "не указана"} - ${vacancy.salary_max || "не указана"} руб. (до вычета НДФЛ)\nГрафик: ${vacancy.schedule || "не указан"}\n\nХотите откликнуться на вакансию?`,
   );
-
   showConsentButtons();
 }
 
 function showConsentButtons() {
   inputArea.innerHTML = "";
   inputArea.className = "input-area";
-
   const consentText = document.createElement("div");
   consentText.style.cssText =
     "margin-bottom: 8px; font-size: 13px; color: #1485d1; display: flex; flex-direction: column; align-items: center;";
   consentText.innerHTML = `
-        <p style = "text-align: center; font-weight: 600;">Для отклика на вакансию необходимо ваше согласие на обработку персональных данных</p>
-        <p class="consent_personal_data_checkbox" style="font-size: 12px; margin-top: 8px; text-align: center;">
-            Пожалуйста, ознакомьтесь с 
-            <a href="https://voronezh.rosvodokanal.ru/upload/voronezh/%D0%9F%D1%80%D0%B8%D0%BB%D0%BE%D0%B6%D0%B5%D0%BD%D0%B8%D0%B5%20%E2%84%961%20%D0%9F%D0%BE%D0%BB%D0%B8%D1%82%D0%B8%D0%BA%D0%B0%20%D0%9F%D0%B4%D0%9D%20%D0%A0%D0%92%D0%9A-%D0%92%D0%BE%D1%80%D0%BE%D0%BD%D0%B5%D0%B6%202023.DOCX" target="_blank" style="color: #1485d1; text-decoration: underline;">Политикой обработки персональных данных</a>.
-        </p>
-    `;
+    <p style="text-align: center; font-weight: 600;">Для отклика на вакансию необходимо ваше согласие на обработку персональных данных</p>
+    <p class="consent_personal_data_checkbox" style="font-size: 12px; margin-top: 8px; text-align: center;">
+      Пожалуйста, ознакомьтесь с 
+      <a href="https://voronezh.rosvodokanal.ru/upload/voronezh/%D0%9F%D1%80%D0%B8%D0%BB%D0%BE%D0%B6%D0%B5%D0%BD%D0%B8%D0%B5%20%E2%84%961%20%D0%9F%D0%BE%D0%BB%D0%B8%D1%82%D0%B8%D0%BA%D0%B0%20%D0%9F%D0%B4%D0%9D%20%D0%A0%D0%92%D0%9A-%D0%92%D0%BE%D1%80%D0%BE%D0%BD%D0%B5%D0%B6%202023.DOCX" target="_blank" style="color: #1485d1; text-decoration: underline;">Политикой обработки персональных данных</a>.
+    </p>
+  `;
   inputArea.appendChild(consentText);
-
   const checkboxWrapper = document.createElement("div");
   checkboxWrapper.className = "checkbox-wrapper-42";
   checkboxWrapper.style.cssText =
     "display: flex; align-items: center; margin-bottom: 16px;";
-
   const checkboxInput = document.createElement("input");
   checkboxInput.type = "checkbox";
   checkboxInput.id = "user-consent";
-
   const customCbx = document.createElement("label");
   customCbx.className = "cbx";
   customCbx.htmlFor = "user-consent";
-
   const textLabel = document.createElement("label");
   textLabel.className = "lbl";
   textLabel.htmlFor = "user-consent";
   textLabel.textContent =
     "Я даю согласие на обработку моих персональных данных";
-
   checkboxWrapper.appendChild(checkboxInput);
   checkboxWrapper.appendChild(customCbx);
   checkboxWrapper.appendChild(textLabel);
   inputArea.appendChild(checkboxWrapper);
-
   const buttonsWrapper = document.createElement("div");
   buttonsWrapper.style.cssText =
     "display: flex; gap: 10px; flex-direction: column; width: 100%;";
-
   const agreeBtn = document.createElement("button");
   agreeBtn.className = "option-btn";
   agreeBtn.textContent = "Продолжить";
   agreeBtn.onclick = (e) => {
     e.stopPropagation();
-
-    // Проверяем чекбокс
     if (!checkboxInput.checked) {
       const existingError = checkboxWrapper.querySelector(
         ".input-error-message",
       );
       if (existingError) existingError.remove();
-
       const errorDiv = document.createElement("div");
       errorDiv.className = "input-error-message";
       errorDiv.textContent =
         "Пожалуйста, дайте согласие на обработку персональных данных";
-
       checkboxInput.classList.add("input-error");
       checkboxWrapper.style.position = "relative";
       checkboxWrapper.insertBefore(errorDiv, checkboxWrapper.firstChild);
@@ -249,25 +233,21 @@ function showConsentButtons() {
       }, 3000);
       return;
     }
-
     addUserMessage("Даю согласие");
     answers.consentGiven = true;
     answers.consentTimestamp = new Date().toISOString();
     startApplicationFlow();
   };
-
   const declineBtn = document.createElement("button");
   declineBtn.className = "option-btn";
-  declineBtn.style.opacity = "0.5";
+  declineBtn.style.opacity = "0.7";
   declineBtn.textContent = "Не даю согласие";
   declineBtn.onclick = (e) => {
     e.stopPropagation();
     addUserMessage("Не даю согласие");
     answers.consentGiven = false;
-
     inputArea.innerHTML = "";
     inputArea.className = "input-area";
-
     const messageDiv = document.createElement("div");
     messageDiv.style.cssText =
       "text-align: center; padding: 20px; background: #f5f5f5; border-radius: 10px; margin-bottom: 15px;";
@@ -276,7 +256,6 @@ function showConsentButtons() {
       <p style="font-size: 12px; color: #666;">Мы не можем обработать ваш отклик без этого.</p>
     `;
     inputArea.appendChild(messageDiv);
-
     const restartBtn = document.createElement("button");
     restartBtn.className = "option-btn";
     restartBtn.style.background = "#1485d1";
@@ -288,7 +267,6 @@ function showConsentButtons() {
     };
     inputArea.appendChild(restartBtn);
   };
-
   buttonsWrapper.appendChild(agreeBtn);
   buttonsWrapper.appendChild(declineBtn);
   inputArea.appendChild(buttonsWrapper);
@@ -300,10 +278,8 @@ function declineApplication() {
     "Понимаю. Если передумаете, нажмите кнопку ниже, и мы продолжим.",
   );
   waitingForReturnResponse = true;
-
   inputArea.innerHTML = "";
   inputArea.className = "input-area buttons-container";
-
   const returnBtn = document.createElement("button");
   returnBtn.className = "option-btn";
   returnBtn.textContent = "Хочу откликнуться";
@@ -312,7 +288,6 @@ function declineApplication() {
     addUserMessage("Хочу откликнуться");
     startApplicationFlow();
   };
-
   const otherVacancyBtn = document.createElement("button");
   otherVacancyBtn.className = "option-btn";
   otherVacancyBtn.textContent = "Выбрать другую вакансию";
@@ -322,7 +297,6 @@ function declineApplication() {
     addUserMessage("Выбрать другую вакансию");
     resetChat();
   };
-
   inputArea.appendChild(returnBtn);
   inputArea.appendChild(otherVacancyBtn);
   setTimeout(addAntiSpamToAllButtons, 50);
@@ -331,7 +305,6 @@ function declineApplication() {
 function showReturnButton() {
   inputArea.innerHTML = "";
   inputArea.className = "input-area buttons-container";
-
   const returnBtn = document.createElement("button");
   returnBtn.className = "option-btn";
   returnBtn.textContent = "Хочу откликнуться";
@@ -340,7 +313,6 @@ function showReturnButton() {
     addUserMessage("Хочу откликнуться");
     startApplicationFlow();
   };
-
   inputArea.appendChild(returnBtn);
   setTimeout(addAntiSpamToAllButtons, 50);
 }
@@ -348,20 +320,14 @@ function showReturnButton() {
 function startApplicationFlow() {
   waitingForReturnResponse = false;
   isChatFinished = false;
-
-  // Сохраняем согласие, если оно было
   const savedConsent = answers.consentGiven;
   const savedConsentTimestamp = answers.consentTimestamp;
-
   answers = {};
   currentStep = 0;
-
-  // Восстанавливаем согласие
   if (savedConsent) {
     answers.consentGiven = savedConsent;
     answers.consentTimestamp = savedConsentTimestamp;
   }
-
   loadQuestionsForVacancy().then(() => {
     displayCurrentStep();
   });
@@ -447,7 +413,6 @@ function displayCurrentStep() {
     return;
   }
   const step = questions[currentStep];
-
   if (
     step.field_name === "resumeFile" &&
     answers.hasResume === "Нет, продолжить"
@@ -456,7 +421,6 @@ function displayCurrentStep() {
     displayCurrentStep();
     return;
   }
-
   showTyping();
   setTimeout(() => {
     hideTyping();
@@ -470,7 +434,6 @@ function displayCurrentStep() {
 function buildInputArea(step) {
   inputArea.innerHTML = "";
   inputArea.className = "input-area";
-
   if (step.type === "buttons" || step.type === "choice") {
     inputArea.classList.add("buttons-container");
     (step.options || []).forEach((opt) => {
@@ -488,13 +451,10 @@ function buildInputArea(step) {
     inputArea.classList.add("text-container");
     const wrapper = document.createElement("div");
     wrapper.className = "input-wrapper";
-
     const inputRow = document.createElement("div");
     inputRow.className = "input-row";
-
     const input = document.createElement("input");
     input.type = "text";
-
     if (step.field_name === "phone") {
       input.placeholder = "+7 (___) ___-__-__";
       input.addEventListener("input", (e) => applyPhoneMask(e.target));
@@ -519,9 +479,7 @@ function buildInputArea(step) {
         let value = e.target.value;
         value = value.replace(/[^0-9.]/g, "");
         const parts = value.split(".");
-        if (parts.length > 2) {
-          value = parts[0] + "." + parts.slice(1).join("");
-        }
+        if (parts.length > 2) value = parts[0] + "." + parts.slice(1).join("");
         e.target.value = value;
       });
     } else if (step.field_name === "expectedSalary") {
@@ -534,14 +492,13 @@ function buildInputArea(step) {
     } else {
       input.placeholder = "Введите ответ...";
     }
-
     const sendBtn = document.createElement("button");
     sendBtn.className = "send-btn";
     sendBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M4.698 4.034l16.302 7.966l-16.302 7.966a.503 .503 0 0 1 -.546 -.124a.555 .555 0 0 1 -.12 -.568l2.468 -7.274l-2.468 -7.274a.555 .555 0 0 1 .12 -.568a.503 .503 0 0 1 .546 -.124"/>
-    <path d="M6.5 12h14.5"/>
-  </svg>`;
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M4.698 4.034l16.302 7.966l-16.302 7.966a.503 .503 0 0 1 -.546 -.124a.555 .555 0 0 1 -.12 -.568l2.468 -7.274l-2.468 -7.274a.555 .555 0 0 1 .12 -.568a.503 .503 0 0 1 .546 -.124"/>
+      <path d="M6.5 12h14.5"/>
+    </svg>`;
     sendBtn.onclick = (e) => {
       e.stopPropagation();
       const val = input.value.trim();
@@ -554,7 +511,6 @@ function buildInputArea(step) {
         processTextInput(val, step, input);
       }
     };
-
     inputRow.appendChild(input);
     inputRow.appendChild(sendBtn);
     wrapper.appendChild(inputRow);
@@ -562,10 +518,25 @@ function buildInputArea(step) {
     setTimeout(() => input.focus(), 100);
     setTimeout(addAntiSpamToAllButtons, 50);
   } else if (step.type === "file") {
+    isFileUploadStep = true;
     inputArea.classList.add("file-container");
+    const backBtn = document.createElement("button");
+    backBtn.className = "option-btn";
+    backBtn.textContent = "Назад";
+    backBtn.style.opacity = "0.7";
+    backBtn.style.width = "100%";
+    backBtn.style.marginBottom = "10px";
+    backBtn.onclick = (e) => {
+      e.stopPropagation();
+      goBackToResumeChoice();
+    };
+    inputArea.appendChild(backBtn);
     const label = document.createElement("label");
-    label.className = "file-label";
+    label.className = "option-btn";
     label.innerHTML = "Выберите файл резюме";
+    label.style.display = "block";
+    label.style.textAlign = "center";
+    label.style.cursor = "pointer";
     const fileInput = document.createElement("input");
     fileInput.type = "file";
     fileInput.accept = ".pdf,.doc,.docx";
@@ -612,7 +583,6 @@ function processTextInput(value, step, inputElement) {
     showInputError(inputElement, "Поле обязательно для заполнения");
     return;
   }
-
   if (step.validation === "name") {
     const v = validateName(value);
     if (!v.valid) {
@@ -621,7 +591,6 @@ function processTextInput(value, step, inputElement) {
     }
     value = v.value;
   }
-
   if (step.validation === "phone") {
     const v = validatePhone(value);
     if (!v.valid) {
@@ -630,7 +599,6 @@ function processTextInput(value, step, inputElement) {
     }
     value = v.formatted;
   }
-
   if (step.validation === "experience") {
     const v = validateExperience(value);
     if (!v.valid) {
@@ -639,7 +607,6 @@ function processTextInput(value, step, inputElement) {
     }
     value = v.value;
   }
-
   if (step.validation === "salary") {
     const salaryNum = parseInt(value.replace(/[^0-9]/g, ""), 10);
     if (isNaN(salaryNum) || salaryNum < 0) {
@@ -648,7 +615,6 @@ function processTextInput(value, step, inputElement) {
     }
     value = salaryNum;
   }
-
   hideInputError(inputElement);
   addUserMessage(value.toString());
   answers[step.field_name] = value;
@@ -661,7 +627,6 @@ let isErrorShowing = false;
 
 function showInputError(input, message) {
   if (isErrorShowing) return;
-
   const existingError = input
     .closest(".input-wrapper")
     ?.querySelector(".input-error-message");
@@ -673,14 +638,11 @@ function showInputError(input, message) {
     }, 10);
     return;
   }
-
   isErrorShowing = true;
   input.classList.add("input-error");
-
   const errorDiv = document.createElement("div");
   errorDiv.className = "input-error-message";
   errorDiv.textContent = message;
-
   const wrapper = input.closest(".input-wrapper");
   if (wrapper) {
     wrapper.style.position = "relative";
@@ -688,12 +650,9 @@ function showInputError(input, message) {
   } else {
     input.parentElement.insertBefore(errorDiv, input);
   }
-
   errorDiv.offsetHeight;
   errorDiv.classList.add("show");
-
   if (errorTimeout) clearTimeout(errorTimeout);
-
   errorTimeout = setTimeout(() => {
     if (input) input.classList.remove("input-error");
     if (errorDiv) {
@@ -705,7 +664,6 @@ function showInputError(input, message) {
       }, 300);
     }
   }, 3000);
-
   input.focus();
 }
 
@@ -717,12 +675,13 @@ function hideInputError(input) {
 
 function handleUserResponse(response, step) {
   addUserMessage(response);
-
   if (step.field_name === "hasResume") {
     answers[step.field_name] = response;
     if (response === "Да, прикрепить") {
       currentStep++;
       displayCurrentStep();
+    } else if (response === "Нет, продолжить") {
+      handleNoResume();
     } else {
       currentStep++;
       if (
@@ -735,7 +694,6 @@ function handleUserResponse(response, step) {
     }
     return;
   }
-
   answers[step.field_name] = response;
   currentStep++;
   displayCurrentStep();
@@ -745,15 +703,18 @@ async function finishChat() {
   if (isChatFinished) return;
   isChatFinished = true;
 
-  // Проверяем согласие перед отправкой
+  // Проверяем, дано ли согласие на обработку данных
   if (!answers.consentGiven) {
     addBotMessage(
-      "Без согласия на обработку данных мы не можем принять вашу заявку.",
+      "Без согласия на обработку персональных данных мы не можем принять Вашу заявку.",
       true,
     );
     isChatFinished = false;
     return;
   }
+
+  // Отправляем данные на сервер, если есть активная вакансия
+  let applicationId = null;
 
   if (currentVacancy && Object.keys(answers).length) {
     try {
@@ -777,21 +738,38 @@ async function finishChat() {
         isChatFinished = false;
         return;
       }
+
+      // ПОЛУЧАЕМ ID ИЗ ОТВЕТА СЕРВЕРА
+      applicationId = result.id;
+      console.log("Application ID:", applicationId); // Для отладки
     } catch (err) {
       console.error(err);
-      addBotMessage("Ошибка соединения. Попробуйте позже.", true);
+      addBotMessage(
+        "Произошла ошибка соединения. Пожалуйста, попробуйте позже.",
+        true,
+      );
       isChatFinished = false;
       return;
     }
   }
 
+  // Получаем имя пользователя из ответов
+  const userName = answers.firstName || "кандидат";
+
+  // ФОРМИРУЕМ ССЫЛКУ С ID
+  const withdrawUrl = applicationId
+    ? `http://localhost/ChatBot-RVK-belozerov/withdraw_consent_RVK.php?id=${applicationId}`
+    : `http://localhost/ChatBot-RVK-belozerov/withdraw_consent_RVK.php`;
+
+  // Красиво оформленное сообщение с контактами HR
+  const successMessage = `Спасибо, ${userName}! Отклик отправлен.<br><br>Контактные данные отдела кадров:<br><br> Лебедева Ирина Владимировна<br> Телефон: <a class="HR_contacts_link" href="tel:+74732067707">+7 (473) 206-77-07</a>, доб. 1380<br> E-mail: <a class="HR_contacts_link" href="mailto:i.lebedeva@rosvodokanal.ru">i.lebedeva@rosvodokanal.ru</a><br><br> Никитина Анна Александровна<br> Телефон: <a class="HR_contacts_link" href="tel:+74732067707">+7 (473) 206-77-07</a>, доб. 1232<br> E-mail: <a class="HR_contacts_link" href="mailto:aa.nikitina@rosvodokanal.ru">aa.nikitina@rosvodokanal.ru</a><br><br> <a class = "HR_contacts_link agreed" href="${withdrawUrl}" target="_blank">Отозвать согласие на обработку данных</a>`;
+
+  // Добавляем сообщение об успехе в чат
+  addBotMessage(successMessage);
+
+  // Очищаем область ввода и показываем финальное состояние
   inputArea.innerHTML = "";
   inputArea.className = "input-area finished";
-
-  const finishDiv = document.createElement("div");
-  finishDiv.className = "finish-message";
-  finishDiv.innerHTML = "Отклик отправлен!";
-  inputArea.appendChild(finishDiv);
 
   const newChatBtn = document.createElement("button");
   newChatBtn.className = "option-btn";
@@ -815,12 +793,9 @@ function resetChat() {
   isChatFinished = false;
   waitingForVacancySelection = false;
   waitingForReturnResponse = false;
-
   messagesDiv.innerHTML = "";
-
   inputArea.innerHTML = "";
   inputArea.className = "input-area";
-
   isFirstOpen = true;
   loadVacancies();
 }
@@ -867,17 +842,11 @@ function scrollToLastMessage() {
   setTimeout(() => {
     const messagesDiv = document.getElementById("messages");
     if (!messagesDiv) return;
-
     const lastMessage = messagesDiv.lastElementChild;
     if (!lastMessage) return;
-
     const messageTop = lastMessage.offsetTop;
     const targetScroll = messageTop - 80;
-
-    messagesDiv.scrollTo({
-      top: targetScroll,
-      behavior: "smooth",
-    });
+    messagesDiv.scrollTo({ top: targetScroll, behavior: "smooth" });
   }, 100);
 }
 
@@ -885,21 +854,55 @@ function addAntiSpamToAllButtons() {
   document.querySelectorAll("button").forEach((btn) => {
     if (btn.hasAttribute("data-anti-spam")) return;
     btn.setAttribute("data-anti-spam", "true");
-
     const originalClick = btn.onclick;
     btn.onclick = (e) => {
       if (btn.disabled) return;
       btn.disabled = true;
-      btn.style.opacity = "0.5";
-
+      btn.style.opacity = "0.7";
       setTimeout(() => {
         btn.disabled = false;
         btn.style.opacity = "";
       }, 1000);
-
       if (originalClick) originalClick.call(btn, e);
     };
   });
+}
+
+function goBackToResumeChoice() {
+  const resumeQuestionStep = questions.find(
+    (q) => q.field_name === "hasResume",
+  );
+  if (!resumeQuestionStep) return;
+  const resumeStepIndex = questions.findIndex(
+    (q) => q.field_name === "hasResume",
+  );
+  delete answers.resumeFile;
+  answers.hasResume = "Нет, продолжить";
+  currentStep = resumeStepIndex + 1;
+  if (
+    questions[currentStep] &&
+    questions[currentStep].field_name === "resumeFile"
+  ) {
+    currentStep++;
+  }
+  addBotMessage("Хорошо, продолжим анкету без резюме.");
+  setTimeout(() => {
+    displayCurrentStep();
+  }, 500);
+  isFileUploadStep = false;
+}
+
+function handleNoResume() {
+  answers.hasResume = "Нет, продолжить";
+  answers.resumeFile = null;
+  currentStep++;
+  if (
+    questions[currentStep] &&
+    questions[currentStep].field_name === "resumeFile"
+  ) {
+    currentStep++;
+  }
+  displayCurrentStep();
 }
 
 setTimeout(addAntiSpamToAllButtons, 100);

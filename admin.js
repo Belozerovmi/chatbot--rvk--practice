@@ -432,3 +432,448 @@ document
 
 // Load initial data
 loadVacancies();
+// Добавь эту функцию в admin.js (после функции renderApplications)
+
+// Рендер заявок с отображением статуса согласия
+function renderApplications(apps) {
+  if (!apps || !apps.length)
+    return '<div style="text-align:center;padding:60px;color:#94a3b8;">Нет заявок</div>';
+
+  return apps
+    .map((app) => {
+      const answers = app.answers || {};
+      // Определяем статус согласия
+      const consentGranted = app.consent_granted == 1;
+      const consentStatus = consentGranted
+        ? '<span class="consent-status active">Активно</span>'
+        : '<span class="consent-status revoked">Отозвано</span>';
+
+      return `
+        <div class="application-card">
+            <div class="application-header">
+                <span class="application-title">
+                    <span class="application-svg-icon">
+                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/>
+                            <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            <path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/>
+                        </svg> Заявка #${app.id || "?"}
+                    </span>
+                    <span class="vacancy-name">${escapeHtml(app.vacancy_title || "Вакансия удалена")}</span>
+                </span>
+                <span class="application-date">${app.created_at ? new Date(app.created_at).toLocaleString("ru-RU") : "—"}</span>
+            </div>
+            <div class="application-fields">
+                <div class="application-field"><strong>Имя:</strong> <span>${escapeHtml(answers.firstName) || "—"}</span></div>
+                <div class="application-field"><strong>Телефон:</strong> <span>${escapeHtml(answers.phone) || "—"}</span></div>
+                <div class="application-field"><strong>Опыт:</strong> <span>${escapeHtml(answers.experience) || "—"} лет</span></div>
+                <div class="application-field"><strong>Расположение:</strong> <span>${escapeHtml(answers.location) || "—"}</span></div>
+                <div class="application-field"><strong>График:</strong> <span>${escapeHtml(answers.schedule) || "—"}</span></div>
+                <div class="application-field"><strong>Образование:</strong> <span>${escapeHtml(answers.education) || "—"}</span></div>
+                <div class="application-field"><strong>Зарплата:</strong> <span>${escapeHtml(answers.expectedSalary) || "—"} ₽</span></div>
+                <div class="application-field"><strong>Согласие:</strong> ${consentStatus}</div>
+            </div>
+            ${
+              app.resume_path
+                ? `<div class="application-field" style="margin-top:12px;"><strong>Резюме:</strong> <span><a href="${app.resume_path}" class="resume-link" target="_blank">Скачать</a></span></div>`
+                : `<div class="application-field" style="margin-top:12px;"><strong>Резюме:</strong> <span style="color:#94a3b8;">— не прикреплено —</span></div>`
+            }
+            <div class="application-actions">
+                <button class="btn-small btn-danger" onclick="confirmDelete('application', ${app.id})"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-trash"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M4 7l16 0" /><path d="M10 11l0 6" /><path d="M14 11l0 6" /><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg> Удалить заявку</button>
+            </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+// Filter applications by selected vacancy and consent status
+function filterApplications() {
+  const vacancyId = document.getElementById("vacancy-filter").value;
+  const consentFilter =
+    document.getElementById("consent-filter")?.value || "all";
+  const container = document.getElementById("applications-list");
+  const statsBar = document.getElementById("stats-bar");
+
+  const totalCount = allApplications.length;
+
+  let filteredApps = allApplications;
+  let filteredVacancyTitle = "Все вакансии";
+
+  // Фильтр по вакансии
+  if (vacancyId !== "all") {
+    filteredApps = filteredApps.filter((app) => app.vacancy_id == vacancyId);
+  }
+
+  // Фильтр по статусу согласия
+  if (consentFilter === "active") {
+    filteredApps = filteredApps.filter((app) => app.consent_granted == 1);
+  } else if (consentFilter === "revoked") {
+    filteredApps = filteredApps.filter((app) => app.consent_granted == 0);
+  }
+
+  // Уникальные вакансии
+  const uniqueVacancies = [
+    ...new Set(
+      filteredApps.map((app) => app.vacancy_title || "Удаленная вакансия"),
+    ),
+  ];
+
+  statsBar.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-number">${totalCount}</div>
+      <div class="stat-label">Всего заявок</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">${filteredApps.length}</div>
+      <div class="stat-label">Заявок по фильтру</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">${uniqueVacancies.length}</div>
+      <div class="stat-label">Вакансий</div>
+    </div>
+  `;
+
+  container.innerHTML = renderApplications(filteredApps);
+}
+// ===== Кастомный выпадающий список =====
+class CustomSelect {
+  constructor(selectElement, options = {}) {
+    this.selectElement = selectElement;
+    this.options = options;
+    this.maxLength = options.maxLength || 45; // Максимальная длина
+    this.init();
+  }
+
+  // Метод для обрезки длинных текстов
+  truncateText(text) {
+    if (!text) return "";
+    if (text.length <= this.maxLength) return text;
+    return text.substring(0, this.maxLength) + "...";
+  }
+
+  init() {
+    // Создаём кастомный контейнер
+    const customContainer = document.createElement("div");
+    customContainer.className = "custom-select";
+
+    // Получаем оригинальный select и скрываем его
+    const originalSelect = this.selectElement;
+    originalSelect.style.display = "none";
+    originalSelect.parentNode.insertBefore(customContainer, originalSelect);
+    customContainer.appendChild(originalSelect);
+
+    // Сохраняем контейнер
+    this.container = customContainer;
+
+    // Создаём триггер
+    this.trigger = document.createElement("div");
+    this.trigger.className = "custom-select-trigger";
+
+    // Текст триггера (обрезаем)
+    const selectedOption = originalSelect.options[originalSelect.selectedIndex];
+    const selectedText = selectedOption
+      ? selectedOption.textContent
+      : "Выберите";
+    this.triggerText = document.createElement("span");
+    this.triggerText.textContent = this.truncateText(selectedText);
+    this.triggerText.title = selectedText;
+
+    // ===== ДОБАВЛЯЕМ СТИЛИ ДЛЯ ОБРЕЗКИ ДЛИННОГО ТЕКСТА =====
+    this.triggerText.style.whiteSpace = "nowrap";
+    this.triggerText.style.overflow = "hidden";
+    this.triggerText.style.textOverflow = "ellipsis";
+    this.triggerText.style.maxWidth = "220px";
+    this.triggerText.style.display = "block";
+
+    // Стрелка - SVG иконка
+    this.arrow = document.createElement("span");
+    this.arrow.className = "arrow";
+    this.arrow.style.display = "flex";
+    this.arrow.style.alignItems = "center";
+    this.arrow.style.justifyContent = "center";
+    this.arrow.style.flexShrink = "0"; // Чтобы стрелка не сжималась
+    this.arrow.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 9l6 6l6 -6" />
+  </svg>`;
+
+    this.trigger.appendChild(this.triggerText);
+    this.trigger.appendChild(this.arrow);
+    customContainer.appendChild(this.trigger);
+
+    // Создаём выпадающий список
+    this.dropdown = document.createElement("div");
+    this.dropdown.className = "custom-select-dropdown";
+
+    // Добавляем опции
+    this.optionsList = [];
+    for (let i = 0; i < originalSelect.options.length; i++) {
+      const option = originalSelect.options[i];
+      const optionDiv = document.createElement("div");
+      optionDiv.className = "custom-select-option";
+      if (option.selected) optionDiv.classList.add("selected");
+      if (option.disabled) optionDiv.classList.add("disabled");
+
+      // Обрезаем длинный текст
+      const originalText = option.textContent;
+      optionDiv.textContent = this.truncateText(originalText);
+      optionDiv.title = originalText; // Полный текст при наведении
+
+      optionDiv.dataset.value = option.value;
+      optionDiv.dataset.index = i;
+      optionDiv.dataset.fullText = originalText; // Сохраняем полный текст
+
+      optionDiv.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.selectOption(i);
+      });
+
+      this.dropdown.appendChild(optionDiv);
+      this.optionsList.push(optionDiv);
+    }
+
+    customContainer.appendChild(this.dropdown);
+
+    // Обработчики событий
+    this.trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.toggleDropdown();
+    });
+
+    // Закрытие при клике вне
+    document.addEventListener("click", (e) => {
+      if (!customContainer.contains(e.target)) {
+        this.closeDropdown();
+      }
+    });
+
+    // Сохраняем ссылки
+    this.originalSelect = originalSelect;
+  }
+
+  toggleDropdown() {
+    if (this.dropdown.classList.contains("show")) {
+      this.closeDropdown();
+    } else {
+      this.openDropdown();
+    }
+  }
+
+  openDropdown() {
+    this.dropdown.classList.add("show");
+    this.trigger.classList.add("open");
+  }
+
+  closeDropdown() {
+    this.dropdown.classList.remove("show");
+    this.trigger.classList.remove("open");
+  }
+
+  selectOption(index) {
+    // Обновляем оригинальный select
+    this.originalSelect.selectedIndex = index;
+
+    // Вызываем onchange
+    if (this.originalSelect.onchange) {
+      this.originalSelect.onchange(new Event("change"));
+    }
+    this.originalSelect.dispatchEvent(new Event("change"));
+
+    // Обновляем текст триггера (обрезаем)
+    const selectedOption = this.originalSelect.options[index];
+    const fullText = selectedOption.textContent;
+    this.triggerText.textContent = this.truncateText(fullText);
+    this.triggerText.title = fullText;
+
+    // Обновляем классы у опций
+    this.optionsList.forEach((opt, i) => {
+      if (i === index) {
+        opt.classList.add("selected");
+      } else {
+        opt.classList.remove("selected");
+      }
+    });
+
+    // Закрываем дропдаун
+    this.closeDropdown();
+  }
+
+  setValue(value) {
+    for (let i = 0; i < this.originalSelect.options.length; i++) {
+      if (this.originalSelect.options[i].value == value) {
+        this.selectOption(i);
+        break;
+      }
+    }
+  }
+
+  // Метод для обновления списка опций
+  updateOptions(optionsData) {
+    this.dropdown.innerHTML = "";
+    this.optionsList = [];
+    this.originalSelect.innerHTML = "";
+
+    optionsData.forEach((option, index) => {
+      // Добавляем в оригинальный select
+      const originalOption = document.createElement("option");
+      originalOption.value = option.value;
+      originalOption.textContent = option.label;
+      if (option.selected) originalOption.selected = true;
+      this.originalSelect.appendChild(originalOption);
+
+      // Добавляем в кастомный dropdown (с обрезкой)
+      const optionDiv = document.createElement("div");
+      optionDiv.className = "custom-select-option";
+      if (option.selected) optionDiv.classList.add("selected");
+      if (option.disabled) optionDiv.classList.add("disabled");
+
+      // Обрезаем длинный текст
+      optionDiv.textContent = this.truncateText(option.label);
+      optionDiv.title = option.label;
+      optionDiv.dataset.value = option.value;
+      optionDiv.dataset.index = index;
+
+      optionDiv.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.selectOption(index);
+      });
+
+      this.dropdown.appendChild(optionDiv);
+      this.optionsList.push(optionDiv);
+    });
+
+    // Обновляем текст триггера
+    const selectedOption =
+      this.originalSelect.options[this.originalSelect.selectedIndex];
+    if (selectedOption) {
+      this.triggerText.textContent = this.truncateText(
+        selectedOption.textContent,
+      );
+      this.triggerText.title = selectedOption.textContent;
+    }
+  }
+}
+
+// Инициализация кастомных селектов
+let vacancyCustomSelect = null;
+let consentCustomSelect = null;
+
+function initCustomSelects() {
+  const vacancyFilter = document.getElementById("vacancy-filter");
+  const consentFilter = document.getElementById("consent-filter");
+
+  if (vacancyFilter && !vacancyFilter.hasAttribute("data-custom-initialized")) {
+    vacancyCustomSelect = new CustomSelect(vacancyFilter);
+    vacancyFilter.setAttribute("data-custom-initialized", "true");
+  }
+
+  if (consentFilter && !consentFilter.hasAttribute("data-custom-initialized")) {
+    consentCustomSelect = new CustomSelect(consentFilter);
+    consentFilter.setAttribute("data-custom-initialized", "true");
+  }
+}
+
+// Обновляем опции фильтра вакансий
+async function loadVacancyFilter() {
+  try {
+    const res = await fetch("api.php?action=adminGetVacancies");
+    const vacancies = await res.json();
+
+    // Формируем данные для кастомного селекта
+    const optionsData = [
+      { value: "all", label: " Все вакансии ", selected: true },
+    ];
+
+    vacancies.forEach((v) => {
+      optionsData.push({
+        value: v.id,
+        label: escapeHtml(v.title),
+        selected: false,
+      });
+    });
+
+    // Обновляем кастомный селект, если он существует
+    if (vacancyCustomSelect) {
+      vacancyCustomSelect.updateOptions(optionsData);
+    } else {
+      // Если ещё не инициализирован, обновляем обычный select
+      const select = document.getElementById("vacancy-filter");
+      if (select) {
+        select.innerHTML = optionsData
+          .map(
+            (opt) =>
+              `<option value="${opt.value}" ${opt.selected ? "selected" : ""}>${opt.label}</option>`,
+          )
+          .join("");
+      }
+    }
+  } catch (err) {
+    showNotification("Ошибка загрузки", "error");
+  }
+}
+
+// Запускаем инициализацию после загрузки DOM
+document.addEventListener("DOMContentLoaded", function () {
+  initCustomSelects();
+});
+
+// Обновляем функцию filterApplications, чтобы она корректно читала значение
+function filterApplications() {
+  // Получаем значение из оригинального select (который скрыт, но его значение обновляется)
+  const vacancySelect = document.getElementById("vacancy-filter");
+  const consentSelect = document.getElementById("consent-filter");
+
+  const vacancyId = vacancySelect ? vacancySelect.value : "all";
+  const consentFilter = consentSelect ? consentSelect.value : "all";
+
+  const container = document.getElementById("applications-list");
+  const statsBar = document.getElementById("stats-bar");
+
+  const totalCount = allApplications.length;
+
+  let filteredApps = [...allApplications];
+
+  // Фильтр по вакансии
+  if (vacancyId !== "all") {
+    filteredApps = filteredApps.filter((app) => app.vacancy_id == vacancyId);
+  }
+
+  // Фильтр по статусу согласия
+  if (consentFilter === "active") {
+    filteredApps = filteredApps.filter((app) => app.consent_granted == 1);
+  } else if (consentFilter === "revoked") {
+    filteredApps = filteredApps.filter((app) => app.consent_granted == 0);
+  }
+
+  // Уникальные вакансии
+  const uniqueVacancies = [
+    ...new Set(
+      filteredApps.map((app) => app.vacancy_title || "Удаленная вакансия"),
+    ),
+  ];
+
+  statsBar.innerHTML = `
+        <div class="stat-card">
+            <div class="stat-number">${totalCount}</div>
+            <div class="stat-label">Всего заявок</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">${filteredApps.length}</div>
+            <div class="stat-label">Заявок по фильтру</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">${uniqueVacancies.length}</div>
+            <div class="stat-label">Вакансий</div>
+        </div>
+    `;
+
+  if (!filteredApps.length) {
+    container.innerHTML =
+      '<div style="text-align:center;padding:60px;color:#94a3b8;">Нет заявок</div>';
+    return;
+  }
+
+  container.innerHTML = renderApplications(filteredApps);
+}
